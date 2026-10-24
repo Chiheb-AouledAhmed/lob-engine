@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        config:
+          - { name: release, type: Release, sanitize: OFF }
+          - { name: asan-ubsan, type: Debug, sanitize: ON }
+    name: ${{ matrix.config.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.config.type }} -DLOB_SANITIZE=${{ matrix.config.sanitize }}
+      - name: Build
+        run: cmake --build build -j
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Benchmark
+        if: matrix.config.name == 'release'
+        run: ./build/lob_bench 1000000
